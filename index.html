@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>KI-93</title>
+<meta name="description" content="KI-93 Currency Calculator: convert Lebanese lira, US dollars and other currencies, even with no signal.">
+<meta name="theme-color" content="#f3bdd2">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icons/favicon.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KI-93">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preload" href="./fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* what the artifact skeleton normally provides */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0} img{max-width:100%} [hidden]{display:none!important}
+</style>
+<style>
+@font-face{font-family:"Geist";src:url("./fonts/Geist-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
+/* Layout: one pink handheld filling the screen — brand strip, pair selector, purple LCD with two
+   editable rows, rate line, magenta function row, grey keypad deck. Single committed device look. */
+:root{
+  color-scheme: light;
+  --shell:#f3bdd2;        /* pink plastic */
+  --shell-hi:#f8d3e2;
+  --shell-lo:#d996b2;
+  --brand:#94225f;        /* maroon print */
+  --lcd:#2b0c3d;          /* purple screen */
+  --lcd-hi:#45155f;
+  --glow:#ff7cbc;         /* pink pixels */
+  --glow-dim:#b5568b;
+  --key:#e04f97;          /* magenta keys */
+  --key-lo:#a9306d;
+  --deck:#b9b4ba;         /* grey lower body */
+  --deck-lo:#8d878f;
+  --num:#f6e9ef;          /* digit keys */
+  --num-lo:#c8b2bd;
+  --clr:#f58cbf;          /* clear key, light key pink */
+  --clr-lo:#cc5f95;
+  --blue:#4a79c2;         /* 2ND key */
+  --blue-lo:#2f5591;
+  --lbl-blue:#2f63b0;
+  --lbl-green:#5e9c2c;
+  --amber:#ffb36b;        /* short-payment warning on the LCD */
+  --ink:#2a1420;
+  --font:"Geist","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+html{background:var(--shell)}
+body{background:var(--shell);color:var(--ink);font-family:var(--font);-webkit-tap-highlight-color:transparent;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+button{font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.device{max-width:480px;min-height:100%;margin:0 auto;padding-block:8px 12px;display:flex;flex-direction:column;gap:12px}
+
+.brand{text-align:center;font-size:1.25rem;font-weight:400;color:var(--brand);letter-spacing:-.01em;padding:0 4px;text-wrap:balance}
+.brand b{font-weight:800}
+
+/* pair selector (the wireframe's dropdown) */
+.pair{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:14px;padding:12px 14px;
+  background:var(--num);color:var(--ink);font-size:1.05rem;font-weight:600;text-align:left;box-shadow:3px 4px 0 var(--num-lo),inset 0 1px 0 #fff}
+.pair .code{font-size:.72rem;font-weight:700;letter-spacing:.08em;background:var(--brand);color:#fff;border-radius:6px;padding:3px 6px}
+.pair .name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pair svg{flex:none}
+
+/* LCD */
+.bezel{background:#3a2a36;border-radius:14px;padding:8px;box-shadow:inset 0 3px 8px rgba(0,0,0,.45)}
+.lcd{background:radial-gradient(120% 90% at 30% 20%,var(--lcd-hi),var(--lcd) 70%);border-radius:8px;overflow:hidden;position:relative}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,0,0,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.12) 1px,transparent 1px);background-size:3px 3px;opacity:.5}
+.row{display:block;padding:12px 14px 10px;position:relative;cursor:text}
+.row+.row{border-top:2px solid rgba(255,124,188,.22)}
+.row .tag{display:flex;justify-content:space-between;font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--glow-dim)}
+.row.active .tag{color:var(--glow)}
+.row.active::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 3px 3px 0;background:var(--glow);box-shadow:0 0 8px var(--glow)}
+.row input{display:block;width:100%;background:transparent;border:0;outline:0;padding:0;margin-top:4px;
+  font-family:var(--font);font-weight:600;font-size:2.6rem;line-height:1.1;letter-spacing:-.02em;text-align:right;
+  color:var(--glow);text-shadow:0 0 10px rgba(255,124,188,.55);font-variant-numeric:tabular-nums;caret-color:var(--glow)}
+.row:not(.active) input{color:#e98cbd;text-shadow:none}
+.row input::placeholder{color:var(--glow-dim);opacity:.6}
+
+.rateline{display:flex;align-items:center;gap:12px 8px;padding:0 4px;font-size:.8rem;color:var(--brand);flex-wrap:wrap}
+.rateline strong{font-weight:700;font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;background:#9a8a93;flex:none}
+.dot.ok{background:var(--lbl-green)}.dot.warn{background:#d98a1a}
+.rateline .meta{flex:1 1 auto;opacity:.85;line-height:1.4;cursor:pointer;font-variant-numeric:tabular-nums}
+
+/* mode tabs (TI-style inverted menu) */
+.tabs{display:flex;gap:4px;padding:6px 8px;border-bottom:2px solid rgba(255,124,188,.22);position:relative;z-index:1}
+.tab{border:0;background:transparent;color:var(--glow-dim);font-size:.7rem;font-weight:700;letter-spacing:.12em;padding:5px 10px;border-radius:4px}
+.tab[aria-selected="true"]{background:var(--glow);color:var(--lcd)}
+/* both screens share one grid cell, so the screen is always the height of the taller one */
+.screens{display:grid}
+.view{grid-area:1/1;display:flex;flex-direction:column}
+.view.off{visibility:hidden;pointer-events:none}
+#viewConv .row{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* cashier rows */
+.crow{display:flex!important;align-items:center;gap:12px;padding:10px 14px}
+.crow .side{display:flex;flex-direction:column;align-items:flex-start;gap:6px;flex:none}
+.crow .tag{display:block}
+.crow input{flex:1;min-width:0;margin:0;font-size:2rem}
+.chip{border:1.5px solid var(--glow-dim);background:transparent;color:var(--glow-dim);font-size:.7rem;font-weight:700;letter-spacing:.08em;
+  padding:3px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+.row.active .chip{border-color:var(--glow);color:var(--glow)}
+.change{border-top:2px solid rgba(255,124,188,.22);padding:10px 14px 12px;display:flex;flex-direction:column;gap:2px;flex:1;justify-content:center}
+.change .tag{font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--glow)}
+.cline{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.ccode{font-size:.72rem;font-weight:600;letter-spacing:.12em;color:var(--glow-dim)}
+.cval{font-size:1.6rem;font-weight:600;letter-spacing:-.02em;color:var(--glow);text-shadow:0 0 10px rgba(255,124,188,.5);font-variant-numeric:tabular-nums;
+  min-width:0;overflow-wrap:anywhere;text-align:right}
+.mixed{font-size:.8rem;color:var(--glow-dim);text-align:right;min-height:1.1em;font-variant-numeric:tabular-nums}
+.change.short .tag,.change.short .cval{color:var(--amber);text-shadow:none}
+.change.empty .cval{color:var(--glow-dim);text-shadow:none}
+
+/* money rain */
+#rain{position:fixed;inset:0;width:100%;height:100%;z-index:40;transition:opacity .5s;cursor:pointer}
+#rain.fade{opacity:0}
+
+/* function row */
+.fnrow{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.fn{display:flex;flex-direction:column;align-items:center;gap:3px}
+.fn .over{font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--lbl-blue);white-space:nowrap}
+.fn .over i{font-style:normal;color:var(--lbl-green);margin-left:3px}
+.fkey{width:100%;height:42px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;border:0;border-radius:7px;padding:0;background:var(--key);color:#fff;
+  font-size:.74rem;font-weight:700;letter-spacing:.04em;box-shadow:3px 3px 0 var(--key-lo),inset 0 1px 0 rgba(255,255,255,.35)}
+.fn:first-child .fkey{border-radius:21px 7px 7px 21px}
+.fn:last-child .fkey{border-radius:7px 21px 21px 7px}
+.fkey:active,.fkey.pressed{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--key-lo)}
+.fkey.on{background:var(--blue);box-shadow:3px 3px 0 var(--blue-lo),inset 0 1px 0 rgba(255,255,255,.35)}
+
+/* keypad deck */
+.deck{background:var(--deck);border-radius:18px;padding:12px;margin-top:2px}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.k{border:0;border-radius:12px;min-height:56px;font-size:1.55rem;font-weight:600;font-variant-numeric:tabular-nums;
+  background:var(--num);color:var(--ink);box-shadow:3px 4px 0 var(--num-lo),inset 0 1px 0 #fff}
+.k:active,.k.pressed{transform:translate(2px,3px);box-shadow:1px 1px 0 var(--num-lo)}
+.k.op{background:var(--key);color:#fff;font-size:1rem;font-weight:700;box-shadow:3px 4px 0 var(--key-lo),inset 0 1px 0 rgba(255,255,255,.3)}
+.k.op:active,.k.op.pressed{box-shadow:1px 1px 0 var(--key-lo)}
+.k.blue{background:var(--blue);color:#fff;font-size:1rem;font-weight:700;box-shadow:3px 4px 0 var(--blue-lo),inset 0 1px 0 rgba(255,255,255,.3)}
+.k.blue:active,.k.blue.pressed{box-shadow:1px 1px 0 var(--blue-lo)}
+.k.clr{background:var(--clr);color:var(--brand);box-shadow:3px 4px 0 var(--clr-lo),inset 0 1px 0 rgba(255,255,255,.3)}
+.k.clr:active,.k.clr.pressed{box-shadow:1px 1px 0 var(--clr-lo)}
+.k.tall{grid-row:span 2}
+.deck[hidden]{display:none!important}
+.kbnote{font-size:.78rem;color:var(--brand);text-align:center;padding:4px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(43,12,61,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:440px;max-height:85%;overflow:auto;background:var(--shell-hi);border-radius:22px 22px 0 0;
+  padding:18px max(18px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-right,0px));
+  box-shadow:0 -10px 30px rgba(43,12,61,.3);display:flex;flex-direction:column;gap:14px}
+.sheet h2{margin:0;font-size:1.15rem;font-weight:700;color:var(--brand);text-wrap:balance}
+.sheet p{margin:0;font-size:.88rem;line-height:1.45}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:center;gap:10px;background:#fff7fb;border-radius:12px;padding:10px 12px;box-shadow:inset 0 0 0 1.5px var(--shell)}
+.item.sel{box-shadow:inset 0 0 0 2px var(--key)}
+.item .pick{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;text-align:left;color:var(--ink);font-size:.98rem;font-weight:600}
+.item .pick small{display:block;font-weight:400;font-size:.78rem;opacity:.7;font-variant-numeric:tabular-nums}
+.item .code{font-size:.7rem;font-weight:700;letter-spacing:.08em;background:var(--brand);color:#fff;border-radius:6px;padding:3px 6px;flex:none}
+.mini{border:0;background:none;color:var(--brand);font-size:.78rem;font-weight:600;padding:6px;border-radius:8px}
+.mini.danger{color:#b3261e}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+label.f input{font:600 1.1rem var(--font);text-transform:none;letter-spacing:0;color:var(--ink);background:#fff;border:0;border-radius:10px;padding:12px;
+  box-shadow:inset 0 0 0 1.5px var(--shell-lo);width:100%;font-variant-numeric:tabular-nums}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;line-height:1.4}
+.check input{width:20px;height:20px;accent-color:var(--key);flex:none;margin:1px 0 0}
+.actions{display:flex;gap:10px}
+.btn{flex:1;border:0;border-radius:12px;padding:13px;font-size:.95rem;font-weight:700;background:var(--key);color:#fff;box-shadow:0 3px 0 var(--key-lo)}
+.btn.ghost{background:#fff;color:var(--brand);box-shadow:inset 0 0 0 1.5px var(--shell-lo)}
+.err{color:#b3261e;font-size:.82rem;min-height:1em}
+.two{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--lcd);color:var(--glow);
+  padding:10px 16px;border-radius:10px;font-size:.85rem;font-weight:600;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:360px){.row input{font-size:2.1rem}.crow input{font-size:1.7rem}.cval{font-size:1.35rem}.k{min-height:50px}}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="brand"><b>KI-93</b> Currency Calculator</div>
+
+  <button class="pair" id="pairBtn" aria-haspopup="dialog">
+    <span class="code" id="pairCode">LBP</span>
+    <span class="name" id="pairName">Lebanese lira</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <div class="bezel"><div class="lcd">
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button class="tab" role="tab" id="tabConv" aria-selected="true" aria-controls="viewConv">CONVERT</button>
+      <button class="tab" role="tab" id="tabCash" aria-selected="false" aria-controls="viewCash">CASHIER</button>
+    </div>
+
+    <div class="screens">
+    <div class="view" id="viewConv" role="tabpanel" aria-labelledby="tabConv">
+      <label class="row active" id="rowA" for="inA">
+        <span class="tag"><span id="tagA">Lira</span><span id="symA">LBP</span></span>
+        <input id="inA" inputmode="none" autocomplete="off" spellcheck="false" placeholder="0" aria-label="Amount in local currency">
+      </label>
+      <label class="row" id="rowB" for="inB">
+        <span class="tag"><span>US dollar</span><span>USD</span></span>
+        <input id="inB" inputmode="none" autocomplete="off" spellcheck="false" placeholder="0" aria-label="Amount in US dollars">
+      </label>
+    </div>
+
+    <div class="view off" id="viewCash" role="tabpanel" aria-labelledby="tabCash" inert>
+      <div class="row crow active" id="rowP">
+        <div class="side"><span class="tag">Price</span><button class="chip" id="chipP" aria-label="Change price currency">LBP ⇄</button></div>
+        <input id="inP" inputmode="none" autocomplete="off" spellcheck="false" placeholder="0" aria-label="Price">
+      </div>
+      <div class="row crow" id="rowQ">
+        <div class="side"><span class="tag">Paid</span><button class="chip" id="chipQ" aria-label="Change paid currency">USD ⇄</button></div>
+        <input id="inQ" inputmode="none" autocomplete="off" spellcheck="false" placeholder="0" aria-label="Amount paid">
+      </div>
+      <div class="change" id="chg" aria-live="polite">
+        <div class="tag" id="chgTag">Change due</div>
+        <div class="cline"><span class="ccode" id="chgLc">LBP</span><span class="cval" id="chgL">0</span></div>
+        <div class="cline"><span class="ccode">USD</span><span class="cval" id="chgU">0</span></div>
+        <div class="mixed" id="chgMix"></div>
+      </div>
+    </div>
+    </div>
+  </div></div>
+
+  <div class="rateline">
+    <span class="dot" id="dot"></span>
+    <strong id="rateText">1 USD = 89,500 LBP</strong>
+    <span class="meta" id="rateMeta">Not updated yet</span>
+  </div>
+
+  <div class="fnrow">
+    <div class="fn"><span class="over">Swap<i>F1</i></span><button class="fkey" id="fSwap" aria-label="Switch which row you are typing in">⇅ ROW</button></div>
+    <div class="fn"><span class="over">Rate<i>F2</i></span><button class="fkey" id="fRate">EDIT</button></div>
+    <div class="fn"><span class="over">Online<i>F3</i></span><button class="fkey" id="fSync">SYNC</button></div>
+    <div class="fn"><span class="over">Make<i>F4</i></span><button class="fkey" id="fRain" aria-label="Make it rain">RAIN</button></div>
+    <div class="fn"><span class="over">Input<i>F5</i></span><button class="fkey" id="fKbd" aria-pressed="false">KEYBD</button></div>
+  </div>
+
+  <div class="deck" id="deck">
+    <div class="pad" id="pad">
+      <button class="k" data-k="7">7</button><button class="k" data-k="8">8</button><button class="k" data-k="9">9</button><button class="k op" data-k="back" aria-label="Delete last digit">DEL</button>
+      <button class="k" data-k="4">4</button><button class="k" data-k="5">5</button><button class="k" data-k="6">6</button><button class="k op clr" data-k="clear" aria-label="Clear">CLEAR</button>
+      <button class="k" data-k="1">1</button><button class="k" data-k="2">2</button><button class="k" data-k="3">3</button><button class="k blue tall" data-k="swap" aria-label="Switch row">⇅</button>
+      <button class="k" data-k="000">000</button><button class="k" data-k="0">0</button><button class="k" data-k=".">.</button>
+    </div>
+  </div>
+  <div class="kbnote" id="kbnote" hidden>Using your phone's number pad. Tap KEYBD to bring the calculator keys back.</div>
+</div>
+
+<canvas id="rain" hidden aria-hidden="true"></canvas>
+
+<!-- currency picker -->
+<div class="scrim" id="pickSheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pickH">
+  <h2 id="pickH">Convert USD with…</h2>
+  <div class="list" id="curList"></div>
+  <div class="actions"><button class="btn" id="openAdd">Add a currency</button><button class="btn ghost" data-close>Done</button></div>
+</div></div>
+
+<!-- rate editor -->
+<div class="scrim" id="rateSheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rateH">
+  <h2 id="rateH">Update the rate</h2>
+  <p id="rateHelp">Enter what 1 US dollar buys today.</p>
+  <label class="f" for="rateIn"><span id="rateLbl">LBP per 1 USD</span><input id="rateIn" inputmode="decimal" autocomplete="off"></label>
+  <label class="check"><input type="checkbox" id="lockIn"><span>Keep my rate. Online sync won't overwrite it (useful for a street or shop rate).</span></label>
+  <div class="err" id="rateErr"></div>
+  <div class="actions"><button class="btn ghost" data-close>Cancel</button><button class="btn" id="rateSave">Save rate</button></div>
+</div></div>
+
+<!-- add currency -->
+<div class="scrim" id="addSheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="addH">
+  <h2 id="addH">Add a currency</h2>
+  <div class="two">
+    <label class="f" for="addCode">Code<input id="addCode" maxlength="3" autocomplete="off" placeholder="EUR" list="codes" style="text-transform:uppercase"></label>
+    <label class="f" for="addName">Name<input id="addName" autocomplete="off" placeholder="Euro"></label>
+  </div>
+  <datalist id="codes"></datalist>
+  <label class="f" for="addRate"><span id="addRateLbl">Units per 1 USD</span><input id="addRate" inputmode="decimal" autocomplete="off" placeholder="0.92"></label>
+  <p id="addHint" style="font-size:.8rem;opacity:.8"></p>
+  <div class="err" id="addErr"></div>
+  <div class="actions"><button class="btn ghost" data-close>Cancel</button><button class="btn" id="addSave">Add</button></div>
+</div></div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const KEY='ki93.v1';
+const RATE_API='https://open.er-api.com/v6/latest/USD';
+const DEFAULT={
+  sel:'LBP', kbd:false, auto:null, mode:'convert',
+  cur:[{code:'LBP',name:'Lebanese lira',short:'Lira',rate:89500,dec:0,lock:false,updated:null,src:'default'}]
+};
+const ZERO_DEC=new Set(['LBP','JPY','KRW','IQD','IRR','VND','IDR','CLP','ISK','HUF','UGX','PYG','XOF','XAF','SYP']);
+let names; try{names=new Intl.DisplayNames(['en'],{type:'currency'})}catch(e){names=null}
+const nameOf=c=>{try{return names?names.of(c):c}catch(e){return c}};
+
+let S=load();
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.cur)&&v.cur.length)return v}catch(e){}return JSON.parse(JSON.stringify(DEFAULT))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=id=>document.getElementById(id);
+const cur=()=>S.cur.find(c=>c.code===S.sel)||S.cur[0];
+if(S.mode!=='cash')S.mode='convert';
+
+/* ---------- fields ----------
+   A/B: convert rows (local / USD).  P/Q: cashier price / paid.
+   Each field holds the unformatted string in raw[f]. */
+const F={
+  A:{input:$('inA'),row:$('rowA')}, B:{input:$('inB'),row:$('rowB')},
+  P:{input:$('inP'),row:$('rowP')}, Q:{input:$('inQ'),row:$('rowQ')}
+};
+const raw={A:'',B:'',P:'',Q:''};
+const cash={P:'L',Q:'U'};                 // which currency each cashier row is in: L = local, U = USD
+const active={convert:'A',cash:'P'};
+let computed='B';                         // the convert row that holds a result, not typing
+let fresh=false;                          // next digit replaces a result instead of appending
+let convertTyped=false;                   // user typed in Convert since the last trip to Cashier
+const modeFields=()=>S.mode==='cash'?['P','Q']:['A','B'];
+const act=()=>active[S.mode];
+const other=f=>({A:'B',B:'A',P:'Q',Q:'P'})[f];
+const sideOf=f=>f==='A'?'L':f==='B'?'U':cash[f];
+const decOf=f=>sideOf(f)==='L'?cur().dec:2;
+
+/* ---------- number formatting ---------- */
+function group(intStr){return intStr.replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function fmtRaw(s){
+  if(!s)return '';
+  const [i,d]=s.split('.');
+  return group(i||'0')+(s.includes('.')?'.'+(d||''):'');
+}
+function fmtNum(n,dec){
+  if(!isFinite(n))return '';
+  const v=Math.abs(n).toFixed(dec);
+  const [i,d]=v.split('.');
+  return group(i)+(d?'.'+d:'');
+}
+function clean(s,dec){
+  s=s.replace(/,/g,'').replace(/[^\d.]/g,'');
+  const p=s.indexOf('.');
+  if(p>=0)s=s.slice(0,p+1)+s.slice(p+1).replace(/\./g,'');
+  if(dec===0)s=s.replace(/\..*$/,'');
+  s=s.replace(/^0+(?=\d)/,'');
+  if(s.startsWith('.'))s='0'+s;
+  const [i,d]=s.split('.');
+  if(i.length>15)s=i.slice(0,15)+(d!==undefined?'.'+d:'');
+  if(d!==undefined&&d.length>dec)s=s.split('.')[0]+'.'+d.slice(0,dec);
+  return s;
+}
+
+/* ---------- convert mode ---------- */
+function convert(from){
+  const r=cur().rate, v=parseFloat(raw[from]), to=other(from);
+  computed=to;
+  if(raw[from]===''||isNaN(v))raw[to]='';
+  else raw[to]=(from==='A'?v/r:v*r).toFixed(decOf(to));
+}
+
+/* ---------- cashier mode ---------- */
+function cashier(){
+  const c=cur(), r=c.rate;
+  const toL=(f)=>{const v=parseFloat(raw[f]);return isNaN(v)?NaN:(cash[f]==='L'?v:v*r)};
+  const box=$('chg');
+  $('chgLc').textContent=c.code;
+  $('chipP').textContent=(cash.P==='L'?c.code:'USD')+' ⇄';
+  $('chipQ').textContent=(cash.Q==='L'?c.code:'USD')+' ⇄';
+  const price=toL('P'), paid=toL('Q');
+  box.classList.remove('short','empty');
+  if(raw.P===''||raw.Q===''||isNaN(price)||isNaN(paid)){
+    box.classList.add('empty');
+    $('chgTag').textContent='Change due';
+    $('chgL').textContent='–'; $('chgU').textContent='–'; $('chgMix').textContent='';
+    return;
+  }
+  const diffL=paid-price, usd=diffL/r;
+  const tinyL=Math.pow(10,-c.dec)/2;
+  if(Math.abs(diffL)<tinyL){
+    $('chgTag').textContent='Exact amount';
+    $('chgL').textContent='0'; $('chgU').textContent='0.00'; $('chgMix').textContent='No change due';
+    return;
+  }
+  const short=diffL<0;
+  box.classList.toggle('short',short);
+  $('chgTag').textContent=short?'Still owed':'Change due';
+  $('chgL').textContent=fmtNum(diffL,c.dec);
+  $('chgU').textContent=fmtNum(usd,2);
+  // Lebanese-style split: whole dollar bills, the rest in local currency
+  let mix='';
+  const a=Math.abs(usd);
+  if(r>=100&&a>=1){
+    const whole=Math.floor(a+1e-9);
+    const rem=Math.abs(diffL)-whole*r;
+    mix='or '+whole+' USD'+(rem>=tinyL?' + '+fmtNum(rem,c.dec)+' '+c.code:'');
+  }
+  $('chgMix').textContent=mix;
+}
+
+/* ---------- drawing ---------- */
+function fit(el){
+  const len=el.value.length, small=el.closest('.crow');
+  el.style.fontSize = small
+    ? (len>15?'1.25rem':len>12?'1.5rem':len>9?'1.7rem':'')
+    : (len>16?'1.5rem':len>13?'1.85rem':len>10?'2.2rem':'');
+}
+function paint(){
+  Object.keys(F).forEach(f=>{const el=F[f].input; el.value=fmtRaw(raw[f]); fit(el)});
+  cashier();
+  const el=F[act()].input;
+  if(document.activeElement===el){const n=el.value.length;try{el.setSelectionRange(n,n)}catch(e){}}
+}
+function recalc(f){ if(S.mode==='convert')convert(f); paint(); }
+
+function setActive(f,focus=true){
+  active[S.mode]=f;
+  modeFields().forEach(k=>F[k].row.classList.toggle('active',k===f));
+  fresh=(S.mode==='convert'&&f===computed&&raw[f]!=='');
+  if(focus)F[f].input.focus({preventScroll:true});
+}
+
+/* typing via system keyboard or paste */
+Object.keys(F).forEach(f=>{
+  const el=F[f].input;
+  el.addEventListener('input',()=>{
+    raw[f]=clean(el.value,decOf(f)); active[S.mode]=f; fresh=false;
+    if(f==='A'||f==='B')convertTyped=true;
+    modeFields().forEach(k=>F[k].row.classList.toggle('active',k===f));
+    recalc(f);
+  });
+  el.addEventListener('focus',()=>{ if(act()!==f)setActive(f,false) });
+});
+['P','Q'].forEach(f=>{
+  F[f].row.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.chip')||e.target===F[f].input)return;
+    e.preventDefault(); setActive(f);
+  });
+  $('chip'+f).addEventListener('click',()=>{
+    cash[f]=cash[f]==='L'?'U':'L';
+    raw[f]=clean(raw[f],decOf(f));
+    setActive(f,false); paint();
+  });
+});
+
+/* on-screen keypad */
+function press(k){
+  const f=act(), d=decOf(f);
+  let s=raw[f];
+  if(k==='clear'){modeFields().forEach(x=>raw[x]='');fresh=false;if(S.mode==='convert')convertTyped=false;paint();return}
+  if(k==='swap'){setActive(other(f));paint();return}
+  if(fresh&&k!=='back'){s='';}
+  fresh=false;
+  if(k==='back')s=s.slice(0,-1);
+  else if(k==='.'){if(d===0||s.includes('.'))return; s=(s||'0')+'.'}
+  else s=s+k;
+  raw[f]=clean(s,d);
+  if(f==='A'||f==='B')convertTyped=true;
+  recalc(f);
+}
+$('pad').addEventListener('pointerdown',e=>{
+  const b=e.target.closest('[data-k]'); if(!b)return;
+  e.preventDefault();
+  b.classList.add('pressed');
+  press(b.dataset.k);
+  try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}
+});
+['pointerup','pointercancel','pointerleave'].forEach(t=>$('pad').addEventListener(t,e=>{const b=e.target.closest('[data-k]');b&&b.classList.remove('pressed')}));
+$('pad').addEventListener('click',e=>{const b=e.target.closest('[data-k]'); if(b&&e.detail===0)press(b.dataset.k)});
+document.addEventListener('keydown',e=>{
+  if(!$('pickSheet').hidden||!$('rateSheet').hidden||!$('addSheet').hidden)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const map={Backspace:'back',Escape:'clear',Tab:'swap',ArrowUp:'swap',ArrowDown:'swap'};
+  const k=/^[0-9]$/.test(e.key)?e.key:(e.key==='.'||e.key===',')?'.':map[e.key];
+  if(!k)return;
+  const inField=Object.values(F).some(x=>x.input===document.activeElement);
+  if(S.kbd&&k!=='swap'&&inField)return;
+  e.preventDefault(); press(k);
+});
+
+/* ---------- modes ---------- */
+function setMode(m,focus=true){
+  S.mode=m; save();
+  [['viewConv','convert'],['viewCash','cash']].forEach(([id,k])=>{const v=$(id),off=m!==k;v.classList.toggle('off',off);v.inert=off;v.setAttribute('aria-hidden',off)});
+  $('tabConv').setAttribute('aria-selected',m==='convert'); $('tabCash').setAttribute('aria-selected',m==='cash');
+  setActive(act(),focus); paint();
+}
+$('tabConv').onclick=()=>setMode('convert');
+$('tabCash').onclick=()=>{
+  // bring the number typed in Convert over as the price, then wait for what was paid
+  if(S.mode==='convert'&&convertTyped){
+    const src=other(computed);
+    if(raw[src]!==''){
+      cash.P=src==='A'?'L':'U'; raw.P=raw[src]; raw.Q=''; active.cash='Q';
+      if(cash.Q===cash.P)cash.Q=cash.P==='L'?'U':'L';
+    }
+    convertTyped=false;
+  }
+  setMode('cash');
+};
+
+/* ---------- keypad vs system number pad ---------- */
+function applyKbd(){
+  const mode=S.kbd?'decimal':'none';
+  Object.values(F).forEach(x=>x.input.setAttribute('inputmode',mode));
+  $('deck').hidden=S.kbd; $('kbnote').hidden=!S.kbd;
+  $('fKbd').classList.toggle('on',S.kbd); $('fKbd').setAttribute('aria-pressed',S.kbd);
+}
+$('fKbd').onclick=()=>{S.kbd=!S.kbd;save();applyKbd();const el=F[act()].input;el.blur();setTimeout(()=>el.focus(),30)};
+$('fSwap').onclick=()=>{setActive(other(act()));paint()};
+
+/* ---------- labels & rate line ---------- */
+function stamp(ts){
+  const d=new Date(ts);
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+', '+
+         d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function render(){
+  const c=cur();
+  $('pairCode').textContent=c.code; $('pairName').textContent=c.name;
+  $('tagA').textContent=c.short||c.name; $('symA').textContent=c.code;
+  F.A.input.setAttribute('aria-label','Amount in '+c.name);
+  $('rateText').textContent='1 USD = '+fmtNum(c.rate,c.rate<10?4:c.rate<1000?2:0)+' '+c.code;
+  $('rateMeta').textContent=c.updated?'Last updated '+stamp(c.updated):'Not updated yet';
+  const age=c.updated?Date.now()-c.updated:Infinity;
+  $('dot').className='dot '+(age<48*36e5?'ok':'warn');
+  $('dot').title=age<48*36e5?'Updated in the last 2 days':'Rate may be out of date';
+}
+
+/* ---------- sheets ---------- */
+function open(id){$(id).hidden=false;const f=$(id).querySelector('input,button');setTimeout(()=>f&&f.focus(),40)}
+function close(id){$(id).hidden=true}
+document.querySelectorAll('.scrim').forEach(s=>{
+  s.addEventListener('click',e=>{if(e.target===s||e.target.hasAttribute('data-close'))s.hidden=true});
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.scrim').forEach(s=>s.hidden=true)});
+
+function resetAmounts(){Object.keys(raw).forEach(k=>raw[k]='');fresh=false;paint()}
+let armed=null;
+function renderList(){
+  const L=$('curList'); L.innerHTML='';
+  S.cur.forEach(c=>{
+    const it=document.createElement('div'); it.className='item'+(c.code===S.sel?' sel':'');
+    const pick=document.createElement('button'); pick.className='pick';
+    pick.innerHTML='<span class="code"></span><span><span class="nm"></span><small></small></span>';
+    pick.querySelector('.code').textContent=c.code;
+    pick.querySelector('.nm').textContent=c.name;
+    pick.querySelector('small').textContent='1 USD = '+fmtNum(c.rate,c.rate<10?4:c.rate<1000?2:0)+' '+c.code;
+    pick.onclick=()=>{S.sel=c.code;save();resetAmounts();render();paint();close('pickSheet')};
+    it.appendChild(pick);
+    if(S.cur.length>1){
+      const rm=document.createElement('button'); rm.className='mini danger';
+      rm.textContent=armed===c.code?'Tap to confirm':'Remove';
+      rm.onclick=()=>{
+        if(armed!==c.code){armed=c.code;renderList();return}
+        S.cur=S.cur.filter(x=>x.code!==c.code); if(S.sel===c.code){S.sel=S.cur[0].code;resetAmounts()}
+        armed=null; save(); renderList(); render(); paint(); toast(c.code+' removed');
+      };
+      it.appendChild(rm);
+    }
+    L.appendChild(it);
+  });
+}
+$('pairBtn').onclick=()=>{armed=null;renderList();open('pickSheet')};
+
+/* rate editor */
+function openRate(){
+  const c=cur();
+  $('rateH').textContent='Update the '+c.code+' rate';
+  $('rateHelp').textContent='Enter how many '+c.name.toLowerCase()+' 1 US dollar buys today. Conversions use this until you change it or sync online.';
+  $('rateLbl').textContent=c.code+' per 1 USD';
+  $('rateIn').value=String(c.rate); $('lockIn').checked=!!c.lock; $('rateErr').textContent='';
+  open('rateSheet'); setTimeout(()=>$('rateIn').select(),60);
+}
+$('fRate').onclick=openRate;
+$('rateMeta').onclick=openRate;
+function refreshAfterRate(){ if(S.mode==='convert'){const t=other(computed); if(raw[t]!=='')convert(t)} paint(); }
+$('rateSave').onclick=()=>{
+  const v=parseFloat($('rateIn').value.replace(/,/g,''));
+  if(!(v>0)){$('rateErr').textContent='Enter a number above zero, like 89500.';return}
+  const c=cur(); c.rate=v; c.lock=$('lockIn').checked; c.src='manual'; c.updated=Date.now();
+  save(); render(); close('rateSheet'); refreshAfterRate();
+  toast('Rate saved');
+};
+$('rateIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('rateSave').click()});
+
+/* add currency (from the dropdown) */
+const COMMON=['EUR','GBP','AED','SAR','TRY','EGP','JOD','QAR','KWD','CAD','AUD','CHF','JPY','CNY','INR','SYP','IQD','XOF'];
+$('codes').innerHTML=COMMON.map(c=>'<option value="'+c+'">'+(nameOf(c)||'')+'</option>').join('');
+function openAdd(){
+  ['addCode','addName','addRate'].forEach(i=>$(i).value=''); $('addErr').textContent=''; $('addHint').textContent='';
+  close('pickSheet'); open('addSheet');
+}
+$('openAdd').onclick=openAdd;
+$('addCode').addEventListener('input',()=>{
+  const c=$('addCode').value.toUpperCase().replace(/[^A-Z]/g,''); $('addCode').value=c;
+  $('addRateLbl').textContent=(c||'Units')+' per 1 USD';
+  if(c.length===3){
+    const n=nameOf(c); if(n&&n!==c&&!$('addName').dataset.touched)$('addName').value=n;
+    const known=S.auto&&S.auto.rates&&S.auto.rates[c];
+    if(known&&!$('addRate').value){$('addRate').value=String(known);$('addHint').textContent='Filled from your last online sync. Change it if you use a different rate.'}
+    else if(!known)$('addHint').textContent='Type today\'s rate. It will refresh automatically when you\'re online.';
+  }
+});
+$('addName').addEventListener('input',()=>{$('addName').dataset.touched='1'});
+$('addSave').onclick=()=>{
+  const code=$('addCode').value.trim().toUpperCase(), name=$('addName').value.trim()||nameOf(code), rate=parseFloat($('addRate').value.replace(/,/g,''));
+  if(!/^[A-Z]{3}$/.test(code)){$('addErr').textContent='Use a 3-letter currency code, like EUR.';return}
+  if(code==='USD'){$('addErr').textContent='USD is always on the bottom row. Pick another currency.';return}
+  if(S.cur.some(c=>c.code===code)){$('addErr').textContent=code+' is already in your list.';return}
+  if(!(rate>0)){$('addErr').textContent='Enter how many '+code+' one dollar buys, above zero.';return}
+  S.cur.push({code,name,short:name,rate,dec:ZERO_DEC.has(code)?0:2,lock:false,updated:Date.now(),src:'manual'});
+  S.sel=code; delete $('addName').dataset.touched; save();
+  resetAmounts(); render(); paint(); close('addSheet'); toast(code+' added');
+};
+
+/* ---------- online sync ---------- */
+async function sync(manual){
+  if(!navigator.onLine){if(manual)toast('You\'re offline. Saved rates still work.');return}
+  if(manual)toast('Updating rates…');
+  try{
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),7000);
+    const r=await fetch(RATE_API,{signal:ctl.signal,cache:'no-store'}); clearTimeout(t);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json(); if(!j||!j.rates)throw new Error('bad data');
+    S.auto={rates:j.rates,at:Date.now()};
+    let n=0;
+    S.cur.forEach(c=>{const v=j.rates[c.code]; if(v&&!c.lock){c.rate=v;c.src='auto';c.updated=Date.now();n++}});
+    save(); render(); refreshAfterRate();
+    if(manual)toast(n?'Rates updated':'Nothing to update. Your rates are locked.');
+  }catch(e){
+    if(manual)toast('Couldn\'t connect. Rates update when opened on Wi-Fi.');
+  }
+}
+$('fSync').onclick=()=>sync(true);
+window.addEventListener('online',()=>sync(false));
+
+function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2200)}
+
+/* ---------- make it rain ----------
+   Banknotes launch from the bottom edge, arc up, bounce along the floor and
+   leave trails (the canvas is never cleared mid-run), like a solitaire win. */
+const cv=$('rain'); let rainRun=null;
+function denomsFor(code,rate){
+  if(code==='USD')return [1,5,10,20,50,100];
+  if(code==='LBP')return [1000,5000,10000,20000,50000,100000];
+  return rate>=500?[1000,2000,5000,10000,20000]:rate>=20?[50,100,200,500,1000]:[5,10,20,50,100];
+}
+function noteSprite(code,denom,usd,dpr){
+  const w=84,h=40, c=document.createElement('canvas'); c.width=w*dpr; c.height=h*dpr;
+  const g=c.getContext('2d'); g.scale(dpr,dpr);
+  const p=usd?{bg:'#d6e8c6',ink:'#3c6630',edge:'#86ad72',seal:'#b9d6a3'}:{bg:'#ffd3e7',ink:'#94225f',edge:'#e04f97',seal:'#f7b2d2'};
+  const rr=(x,y,ww,hh,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+ww,y,x+ww,y+hh,r);g.arcTo(x+ww,y+hh,x,y+hh,r);g.arcTo(x,y+hh,x,y,r);g.arcTo(x,y,x+ww,y,r);g.closePath()};
+  rr(0.5,0.5,w-1,h-1,4); g.fillStyle=p.bg; g.fill(); g.lineWidth=1; g.strokeStyle=p.ink; g.stroke();
+  rr(3.5,3.5,w-7,h-7,2); g.strokeStyle=p.edge; g.lineWidth=1.2; g.stroke();
+  g.beginPath(); g.ellipse(w/2,h/2,17,12,0,0,Math.PI*2); g.fillStyle=p.seal; g.fill();
+  const label=denom>=1000?group(String(denom)):String(denom);
+  g.fillStyle=p.ink; g.textAlign='center'; g.textBaseline='middle';
+  g.font='700 '+(label.length>5?11:14)+'px Geist, Helvetica, Arial, sans-serif';
+  g.fillText((usd?'$':'')+label,w/2,h/2+1);
+  g.font='700 7px Geist, Helvetica, Arial, sans-serif'; g.textAlign='left'; g.fillText(code,7,10);
+  g.textAlign='right'; g.fillText(label,w-7,h-9);
+  return c;
+}
+function stopRain(){
+  if(!rainRun)return;
+  cancelAnimationFrame(rainRun.raf); clearTimeout(rainRun.end);
+  const run=rainRun; rainRun=null;
+  cv.classList.add('fade');
+  setTimeout(()=>{ if(rainRun)return; cv.hidden=true; cv.classList.remove('fade'); run.ctx.setTransform(1,0,0,1,0,0); run.ctx.clearRect(0,0,cv.width,cv.height); },520);
+}
+cv.addEventListener('pointerdown',stopRain);
+function makeItRain(){
+  if(rainRun){stopRain();return}
+  const dpr=Math.min(window.devicePixelRatio||1,2), W=window.innerWidth, H=window.innerHeight;
+  cv.width=W*dpr; cv.height=H*dpr; cv.hidden=false; cv.classList.remove('fade');
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const c=cur();
+  const sprites=[];
+  denomsFor('USD',1).forEach(d=>sprites.push(noteSprite('USD',d,true,dpr)));
+  denomsFor(c.code,c.rate).forEach(d=>sprites.push(noteSprite(c.code,d,false,dpr)));
+  try{navigator.vibrate&&navigator.vibrate([20,40,20,40,30])}catch(_){}
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  rainRun={ctx,raf:0,end:0};
+  if(reduce){ // still picture instead of motion
+    for(let i=0;i<18;i++){const s=sprites[i%sprites.length];ctx.save();ctx.translate(Math.random()*W,Math.random()*H);ctx.rotate((Math.random()-.5)*.6);ctx.drawImage(s,-42,-20,84,40);ctx.restore()}
+    rainRun.end=setTimeout(stopRain,1600); return;
+  }
+  const G=1900, notes=[], total=30, gap=95;
+  let spawned=0, last=performance.now(), t0=last;
+  const floorY=H-20;
+  function spawn(){
+    const s=sprites[(spawned%2===0?0:6)+Math.floor(Math.random()*6)]||sprites[0];
+    const fromLeft=Math.random()<.5;
+    notes.push({s,x:W*(.15+Math.random()*.7),y:H+24,
+      vx:(fromLeft?1:-1)*(140+Math.random()*220),
+      vy:-Math.sqrt(2*G*H*(.55+Math.random()*.4)),
+      rot:(Math.random()-.5)*.5, armed:false, bounces:0});
+    spawned++;
+  }
+  function frame(now){
+    const dt=Math.min(.033,(now-last)/1000); last=now;
+    while(spawned<total&&now-t0>spawned*gap)spawn();
+    for(let i=notes.length-1;i>=0;i--){
+      const n=notes[i];
+      n.vy+=G*dt; n.x+=n.vx*dt; n.y+=n.vy*dt;
+      if(n.y<floorY-30)n.armed=true;
+      if(n.armed&&n.y>floorY&&n.vy>0){n.y=floorY;n.vy*=-.72;n.bounces++}
+      if(n.x<-60||n.x>W+60||(n.bounces>7)){notes.splice(i,1);continue}
+      ctx.save(); ctx.translate(n.x,n.y); ctx.rotate(n.rot); ctx.drawImage(n.s,-42,-20,84,40); ctx.restore();
+    }
+    if(spawned>=total&&notes.length===0){rainRun.end=setTimeout(stopRain,500);return}
+    rainRun.raf=requestAnimationFrame(frame);
+  }
+  rainRun.raf=requestAnimationFrame(frame);
+  rainRun.end=setTimeout(stopRain,9000);
+}
+$('fRain').onclick=makeItRain;
+
+/* ---------- boot: open with worked examples ---------- */
+applyKbd(); render();
+raw.A='2000000'; convert('A');
+raw.P='1250000'; raw.Q='20';
+setMode(S.mode,false);
+if(!S.auto||Date.now()-S.auto.at>12*36e5)sync(false);
+// ask the browser to keep saved currencies and rates instead of clearing them to free space
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})});
+}
+})();
+</script>
+</body>
+</html>

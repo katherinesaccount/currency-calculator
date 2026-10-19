@@ -1,0 +1,17 @@
+{
+  "name": "KI-93 Currency Calculator",
+  "short_name": "KI-93",
+  "description": "Convert Lebanese lira, US dollars and other currencies, even with no signal.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3bdd2",
+  "theme_color": "#f3bdd2",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
